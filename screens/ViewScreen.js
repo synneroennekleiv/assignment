@@ -5,42 +5,34 @@ import { collection, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
 
 import { db } from '../firebaseConfig';
-import { BarChart } from 'react-native-chart-kit';
+import { BarChart } from 'react-native-gifted-charts';
 
 const ViewScreen = () => {
     const navigation = useNavigation();
-    const [data, setData] = useState([]);
+    const [studentData, setStudentData] = useState([]);
     const [chartData, setChartData] = useState([]);
 
     useEffect(() => {
-        const unsubscribe = getRealtimeData();
-        return () => unsubscribe();
-    }, []);
-
-    const getRealtimeData = () => {
         const dataCollectionRef = collection(db, "data");
+        // Listening for changes in the collection
         return onSnapshot(dataCollectionRef, snapshot => {
             const updatedData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-            setData(updatedData);
 
-            calculateGradeDistributions(updatedData);
+            // Updating state with fetched data and chart data
+            if (updatedData && Array.isArray(updatedData)) {
+                const classData = aggregateDataByClassID(updatedData);
+                const newChartData = prepareChartData(classData);
+
+                setStudentData(updatedData);
+                setChartData(newChartData);
+            }
         }, error => {
             console.error("Error fetching documents: ", error);
             Alert.alert("Error", "Failed to fetch data. Please try again.");
         });
-    };
+    }, []);
 
-    const calculateGradeDistributions = (data) => {
-        const gradeDistributions = {};
-        data.forEach(item => {
-            if (!gradeDistributions[item.className]) {
-                gradeDistributions[item.className] = {};
-            }
-            gradeDistributions[item.className][item.Grade] = (gradeDistributions[item.className][item.Grade] || 0) + 1;
-        });
-        setChartData(gradeDistributions);
-    };
-
+    // Deleting document from Firestore
     const handleDeleteData = async (id) => {
         try {
             await deleteDoc(doc(db, "data", id)); // Corrected deleteDoc usage
@@ -49,6 +41,92 @@ const ViewScreen = () => {
             Alert.alert("Error", "Failed to delete data. Please try again.");
         }
     };
+
+    const aggregateDataByClassID = (data) => {
+        const grades = ['A', 'B', 'C', 'D', 'E', 'F'];
+        const classData = {};
+
+        // Aggregating data by class ID and grade
+        if (data && Array.isArray(data)) {
+            data.forEach((data) => {
+                const {classId, Grade} = data;
+                if(!classData[classId]) {
+                    classData[classId] = grades.reduce((acc, grade) => {
+                        acc[grade] = 0;
+                        return acc;
+                    }, []);
+                }
+                if(grades.includes(Grade)) {
+                    classData[classId][Grade]++;
+                }
+            });
+        }
+        return classData;
+    };
+
+    const prepareChartData = (classData) => {
+        // Preparing chart data
+        return Object.keys(classData).map((classId) =>({
+            classId,
+            data: {
+                labels: Object.keys(classData[classId]),
+                datasets: [{
+                    data: Object.values(classData[classId])
+                }],
+            },
+            legend: `ClassId ${classId}`
+        }));
+    };
+
+    const testD = [
+        {
+            id: '1',
+            classId: 'A1',
+            fName: 'John',
+            lName: 'Doe',
+            DOB: new Date('1990-01-01'),
+            className: 'Math',
+            Score: 85,
+            Grade: 'A'
+        },
+        {
+            id: '2',
+            classId: 'B1',
+            fName: 'Jane',
+            lName: 'Smith',
+            DOB: new Date('1992-05-15'),
+            className: 'Science',
+            Score: 78,
+            Grade: 'B'
+        },
+    ];
+
+    const renderCharts = () => chartData.map(({classId, data, legend }, index) => (
+        // Rendering bar charts
+        <View key={classId}>
+            <Text>key={`legend_${classId}`}{legend}</Text>
+            <BarChart
+                key={`chart_${classId}`}
+                data={data}
+                width={Dimensions.get('window').width - 20}
+                height={220}
+                chartConfig={{
+                    backgroundColor: '#1cc910',
+                    backgroundGradientFrom: '#eff3ff',
+                    backgroundGradientTo: '#efefef',
+                    decimalPlaces: 0,
+                    color: (opacity = 1) => `rgba(0,0,0,${opacity})`,
+                    style: {
+                        borderRadius: 16,
+                    },
+                }}
+                style={{
+                    marginVertical: 8,
+                    borderRadius: 16
+                }}
+            />
+        </View>
+    ));
 
     // Convert the timestamp to a human-readable value
     const formatDate = (timestamp) => {
@@ -75,7 +153,7 @@ const ViewScreen = () => {
             <View style={styles.container}>
                 <Table borderStyle={{ borderWidth: 1, borderColor: '#C1C0B9' }}>
                     <Row data={['Class ID', 'First Name', 'Last Name', 'D.O.B', 'Class Name', 'Score', 'Grade', 'Actions']} style={styles.head} textStyle={styles.headerText} />
-                    {data.map((rowData, index) => (
+                    {studentData.map((rowData, index) => (
                         <Row
                             key={index}
                             data={[
@@ -94,40 +172,7 @@ const ViewScreen = () => {
                     ))}
                 </Table>
             </View>
-            <View style={styles.container}>
-                {Object.entries(chartData).map(([className, distribution], index) => (
-                    <View key={index}>
-                        <BarChart
-                            data={{
-                                labels: Object.keys(distribution),
-                                datasets: [{
-                                    data: Object.values(distribution)
-                                }]
-                            }}
-                            width={Dimensions.get('window').width - 32}
-                            height={300}
-                            yAxisLabel=""
-                            chartConfig={{
-                                backgroundColor: '#1cc910',
-                                backgroundGradientFrom: '#eff3ff',
-                                backgroundGradientTo: '#efefef',
-                                decimalPlaces: 0,
-                                color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                                style: {
-                                    borderRadius: 16,
-                                },
-                            }}
-                            style={{
-                                marginVertical: 8,
-                                borderRadius: 16,
-                            }}
-                        />
-                        <View style={styles.classInfo}>
-                            <Text style={styles.className}>{className}</Text>
-                        </View>
-                    </View>
-                ))}
-            </View>
+            {renderCharts()}
         </ScrollView>
     );
 };
