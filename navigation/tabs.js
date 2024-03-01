@@ -4,6 +4,7 @@ import { StyleSheet, Text, View, Image, TouchableOpacity } from "react-native";
 
 import ViewScreen from "../screens/ViewScreen";
 import AddScreen from "../screens/AddScreen";
+import Chart from "../screens/Chart";
 
 const Tab = createBottomTabNavigator();
 
@@ -46,6 +47,22 @@ const Tabs = () => {
                     <View style={{alignItems: 'center', justifyContent: 'center', top: 10}}>
                         <Image
                             source={require('../assets/plus.png')}
+                            resizeMode='contain'
+                            style={{
+                                width: 25,
+                                height: 25,
+                                tintColor: focused ? '#57564e' : '#748c94'
+                            }}
+                        />
+                        <Text style={{color: focused ? '#57564e' : '#748c94', fontSize: 12}}></Text>
+                    </View>
+                ),
+            }}></Tab.Screen>
+            <Tab.Screen name={"Class Chart"} component={Chart} options={{
+                tabBarIcon: ({focused}) => (
+                    <View style={{alignItems: 'center', justifyContent: 'center', top: 10}}>
+                        <Image
+                            source={require('../assets/statistics.png')}
                             resizeMode='contain'
                             style={{
                                 width: 25,

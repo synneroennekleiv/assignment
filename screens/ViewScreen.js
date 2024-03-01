@@ -5,7 +5,6 @@ import { collection, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
 
 import { db } from '../firebaseConfig';
-import { BarChart } from 'react-native-gifted-charts';
 
 const ViewScreen = () => {
     const navigation = useNavigation();
@@ -20,11 +19,7 @@ const ViewScreen = () => {
 
             // Updating state with fetched data and chart data
             if (updatedData && Array.isArray(updatedData)) {
-                const classData = aggregateDataByClassID(updatedData);
-                const newChartData = prepareChartData(classData);
-
                 setStudentData(updatedData);
-                setChartData(newChartData);
             }
         }, error => {
             console.error("Error fetching documents: ", error);
@@ -41,92 +36,6 @@ const ViewScreen = () => {
             Alert.alert("Error", "Failed to delete data. Please try again.");
         }
     };
-
-    const aggregateDataByClassID = (data) => {
-        const grades = ['A', 'B', 'C', 'D', 'E', 'F'];
-        const classData = {};
-
-        // Aggregating data by class ID and grade
-        if (data && Array.isArray(data)) {
-            data.forEach((data) => {
-                const {classId, Grade} = data;
-                if(!classData[classId]) {
-                    classData[classId] = grades.reduce((acc, grade) => {
-                        acc[grade] = 0;
-                        return acc;
-                    }, []);
-                }
-                if(grades.includes(Grade)) {
-                    classData[classId][Grade]++;
-                }
-            });
-        }
-        return classData;
-    };
-
-    const prepareChartData = (classData) => {
-        // Preparing chart data
-        return Object.keys(classData).map((classId) =>({
-            classId,
-            data: {
-                labels: Object.keys(classData[classId]),
-                datasets: [{
-                    data: Object.values(classData[classId])
-                }],
-            },
-            legend: `ClassId ${classId}`
-        }));
-    };
-
-    const testD = [
-        {
-            id: '1',
-            classId: 'A1',
-            fName: 'John',
-            lName: 'Doe',
-            DOB: new Date('1990-01-01'),
-            className: 'Math',
-            Score: 85,
-            Grade: 'A'
-        },
-        {
-            id: '2',
-            classId: 'B1',
-            fName: 'Jane',
-            lName: 'Smith',
-            DOB: new Date('1992-05-15'),
-            className: 'Science',
-            Score: 78,
-            Grade: 'B'
-        },
-    ];
-
-    const renderCharts = () => chartData.map(({classId, data, legend }, index) => (
-        // Rendering bar charts
-        <View key={classId}>
-            <Text>key={`legend_${classId}`}{legend}</Text>
-            <BarChart
-                key={`chart_${classId}`}
-                data={data}
-                width={Dimensions.get('window').width - 20}
-                height={220}
-                chartConfig={{
-                    backgroundColor: '#1cc910',
-                    backgroundGradientFrom: '#eff3ff',
-                    backgroundGradientTo: '#efefef',
-                    decimalPlaces: 0,
-                    color: (opacity = 1) => `rgba(0,0,0,${opacity})`,
-                    style: {
-                        borderRadius: 16,
-                    },
-                }}
-                style={{
-                    marginVertical: 8,
-                    borderRadius: 16
-                }}
-            />
-        </View>
-    ));
 
     // Convert the timestamp to a human-readable value
     const formatDate = (timestamp) => {
@@ -172,7 +81,6 @@ const ViewScreen = () => {
                     ))}
                 </Table>
             </View>
-            {renderCharts()}
         </ScrollView>
     );
 };
